@@ -2,7 +2,6 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import type { Campaign } from "@/types";
 
 export default function DashboardPage() {
@@ -16,28 +15,20 @@ export default function DashboardPage() {
   }, [status]);
 
   useEffect(() => {
-    if (!session?.user?.email) return;
-    supabase
-      .from("campaigns")
-      .select("*")
-      .eq("user_id", session.user.email)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setCampaigns(data ?? []);
-        setLoading(false);
-      });
-  }, [session]);
+    if (status !== "authenticated") return;
+    fetch("/api/campaigns")
+      .then((r) => r.json())
+      .then((data) => { setCampaigns(data.campaigns ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [status]);
 
-  const totalSent = campaigns.reduce((a, c) => a + c.sent_count, 0);
-  const totalOpens = campaigns.reduce((a, c) => a + c.open_count, 0);
-  const totalClicks = campaigns.reduce((a, c) => a + c.click_count, 0);
+  const totalSent = campaigns.reduce((a, c) => a + (c.sent_count ?? 0), 0);
+  const totalOpens = campaigns.reduce((a, c) => a + (c.open_count ?? 0), 0);
+  const totalClicks = campaigns.reduce((a, c) => a + (c.click_count ?? 0), 0);
   const avgOpenRate = totalSent > 0 ? ((totalOpens / totalSent) * 100).toFixed(1) : "0";
 
   const statusColor: Record<string, string> = {
-    draft: "#444",
-    sending: "#d4a200",
-    sent: "#1a7f37",
-    paused: "#666",
+    draft: "#444", sending: "#d4a200", sent: "#1a7f37", paused: "#666",
   };
 
   if (status === "loading" || loading) return (
@@ -48,7 +39,6 @@ export default function DashboardPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0f", color: "#fff", fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Nav */}
       <nav style={{ borderBottom: "1px solid #1a1a1a", padding: "0 32px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
         <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: "-0.01em" }}>Pitchline</span>
         <div style={{ display: "flex", gap: 24, alignItems: "center" }}>
@@ -62,7 +52,6 @@ export default function DashboardPage() {
       </nav>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 32px" }}>
-        {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 48 }}>
           {[
             { label: "Total sent", value: totalSent.toLocaleString() },
@@ -77,14 +66,16 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Campaigns table */}
         <div style={{ background: "#111", border: "1px solid #1e1e1e", borderRadius: 12, overflow: "hidden" }}>
-          <div style={{ padding: "20px 24px", borderBottom: "1px solid #1a1a1a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ padding: "20px 24px", borderBottom: "1px solid #1a1a1a" }}>
             <span style={{ fontWeight: 600, fontSize: 15 }}>Campaigns</span>
           </div>
           {campaigns.length === 0 ? (
             <div style={{ padding: "60px 24px", textAlign: "center", color: "#444" }}>
-              No campaigns yet. <button onClick={() => router.push("/compose")} style={{ color: "#fff", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Create your first one.</button>
+              No campaigns yet.{" "}
+              <button onClick={() => router.push("/compose")} style={{ color: "#fff", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>
+                Create your first one.
+              </button>
             </div>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
