@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/[...nextauth]/route";
-import { supabaseAdmin } from "../../../lib/supabase";
-import { getGmailClient, sendEmail, injectTracking, personalise } from "../../../lib/gmail";
+import { supabaseAdmin } from "../../../../lib/supabase";
+import { getGmailClient, sendEmail, injectTracking, personalise } from "../../../../lib/gmail";
 import { nanoid } from "nanoid";
 
 export async function POST(req: NextRequest) {
