@@ -2,7 +2,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Campaign } from "@/types";
+import type { Campaign } from "../types";
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
