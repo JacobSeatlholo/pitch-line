@@ -2,7 +2,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "../../lib/supabase";
 import type { Campaign, CampaignRecipient } from "../../types";
 
 export default function CampaignDetailPage() {
