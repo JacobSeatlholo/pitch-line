@@ -3,8 +3,6 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
-import { supabase } from "../../lib/supabase";
-import { nanoid } from "nanoid";
 
 interface SendAsAlias { sendAsEmail: string; displayName?: string; }
 interface Contact { email: string; first_name?: string; last_name?: string; company?: string; [key: string]: string | undefined; }
