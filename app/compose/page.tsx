@@ -15,7 +15,6 @@ export default function ComposePage() {
   const [aliases, setAliases] = useState<SendAsAlias[]>([]);
   const [form, setForm] = useState({ name: "", subject: "", bodyHtml: "", fromEmail: "", fromName: "" });
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -46,51 +45,26 @@ export default function ComposePage() {
       header: true,
       skipEmptyLines: true,
       complete: (result) => {
-        const parsed = (result.data as Contact[]).filter((r) => r.email);
-        setContacts(parsed);
+        setContacts((result.data as Contact[]).filter((r) => r.email));
       },
     });
   }
 
   async function saveDraft() {
-    if (!session?.user?.email) return;
-    setSaving(true);
-    const { data: campaign, error: err } = await supabase.from("campaigns").insert({
-      user_id: session.user.email,
-      name: form.name || "Untitled campaign",
-      subject: form.subject,
-      body_html: form.bodyHtml,
-      from_name: form.fromName,
-      from_email: form.fromEmail,
-      status: "draft",
-      total_recipients: contacts.length,
-    }).select().single();
-
-    if (err || !campaign) { setError("Failed to save campaign"); setSaving(false); return; }
-
-    // Upsert contacts + create recipients
-    for (const c of contacts) {
-      const { data: contact } = await supabase.from("contacts").upsert({
-        user_id: session.user.email,
-        email: c.email,
-        first_name: c.first_name ?? null,
-        last_name: c.last_name ?? null,
-        company: c.company ?? null,
-      }, { onConflict: "user_id,email" }).select().single();
-
-      if (contact) {
-        await supabase.from("campaign_recipients").insert({
-          campaign_id: campaign.id,
-          contact_id: contact.id,
-          email: c.email,
-          tracking_id: nanoid(16),
-          status: "pending",
-        });
-      }
+    if (!form.subject || contacts.length === 0) {
+      setError("Subject and at least one contact required");
+      return;
     }
-
-    setSaving(false);
-    router.push(`/campaigns/${campaign.id}`);
+    setSaving(true);
+    setError("");
+    const res = await fetch("/api/campaigns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, contacts }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? "Failed to save campaign"); setSaving(false); return; }
+    router.push(`/campaigns/${data.campaign.id}`);
   }
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -141,7 +115,6 @@ export default function ComposePage() {
           <textarea style={{ ...inputStyle, minHeight: 280, resize: "vertical", lineHeight: 1.6 }}
             placeholder={`<p>Hi {{first_name}},</p>\n<p>Your message here...</p>`}
             value={form.bodyHtml} onChange={(e) => set("bodyHtml", e.target.value)} />
-          <p style={{ fontSize: 11, color: "#444", marginTop: 6 }}>Plain text or HTML. Use {"{{first_name}}"}, {"{{last_name}}"}, {"{{company}}"} for merge fields.</p>
         </div>
 
         <div>
@@ -150,11 +123,10 @@ export default function ComposePage() {
             {contacts.length > 0 ? (
               <span style={{ color: "#1a7f37", fontWeight: 600 }}>{contacts.length} contacts loaded</span>
             ) : (
-              <span style={{ color: "#555", fontSize: 14 }}>Click to upload CSV<br /><span style={{ fontSize: 12 }}>Required columns: email · Optional: first_name, last_name, company</span></span>
+              <span style={{ color: "#555", fontSize: 14 }}>Click to upload CSV<br /><span style={{ fontSize: 12 }}>Required: email · Optional: first_name, last_name, company</span></span>
             )}
           </div>
           <input ref={fileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleCSV} />
-
           {contacts.length > 0 && (
             <div style={{ marginTop: 12, background: "#0d0d0d", border: "1px solid #1a1a1a", borderRadius: 8, overflow: "hidden" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
